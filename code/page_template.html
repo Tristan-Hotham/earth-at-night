@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Earth at Night</title>
+<meta name="description" content="Satellite night lights every year from 2012 to 2024 on one map: where the world lit up, where it went dark, and what changing street lamps do to the picture.">
+<meta property="og:title" content="The Earth at night: where the world lit up and where it went dark, 2012 to 2024">
+<meta property="og:description" content="The Earth gave off {{world.pct|p0}} more light in 2024 than in 2012, as seen from space. Nepal's light grew {{c.NPL.ratio|x1}} times; Ukraine's and Yemen's halved. Slide through the years or swipe between them.">
+<meta property="og:image" content="https://maps.tristanhotham.com/earth-at-night/header.png">
+<meta property="og:url" content="https://maps.tristanhotham.com/earth-at-night/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800;9..144,900&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/*CSS*/
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="kicker"><b>Data study</b><span>Night lights</span><span>World, 2026</span></div>
+<header class="hero">
+  <h1>The Earth <span class="u">at night</span></h1>
+  <svg class="mark" viewBox="0 0 120 120" aria-hidden="true"><g id="heroMark"></g></svg>
+  <p class="dek">Satellite pictures of the planet's lights, every year from 2012 to 2024, with a modelled look back to 2000. Where the world lit up, where it went dark, and why a darker picture from space does not always mean a darker street.</p>
+</header>
+<div class="byline">Dr Tristan Hotham · Independent researcher · 2026 · Data: VIIRS annual night lights (Elvidge and others; yearly layers by Hengl, OpenGeoHub); DMSP-style lights (Li and others); Natural Earth</div>
+
+<div class="stats">
+  <div><b class="g">+{{world.pct|p0}}</b><span>more light seen from space in 2024 than in 2012 ({{world.pct3|p0}} comparing three-year averages)</span></div>
+  <div><b class="k">{{c.NPL.ratio|x1}}×</b><span>Nepal, the fastest brightening country; then Cambodia ({{c.KHM.ratio|x1}}×) and Ghana ({{c.GHA.ratio|x1}}×)</span></div>
+  <div><b class="m">{{c.UKR.pct|abs}}% less</b><span>light from Ukraine in 2024 than in 2012, and {{c.YEM.pct|abs}}% less from Yemen</span></div>
+  <div><b class="d">{{reg.ssa.share1|p1}}</b><span>of the world's light comes from sub-Saharan Africa, home to {{reg.ssa.pop_share|p0}} of its people</span></div>
+</div>
+
+<p class="lede">From orbit, at half past one in the morning, the inhabited world draws itself in light. Coastlines glow, roads string cities together like beads, and whole countries show up as dark gaps. Since 2012 an instrument called VIIRS, on a weather satellite that passes over every place at about the same hour each night, has measured that light with enough care to compare one year with the next. I wanted to use those measurements to answer three plain questions. How much brighter has the planet become? Where did the new light come from? And where did the lights go out?</p>
+<p>The yearly pictures come from the Annual VIIRS Night Lights of the Earth Observation Group at the Colorado School of Mines, prepared as one consistent stack of world maps by Tomislav Hengl of OpenGeoHub. I used them at about {{grid.km15|int}} km and {{grid.km7|f1}} km resolution and added up the light over every country and around every city of half a million people or more. To keep the measure simple, a square kilometre shining at 1 nanowatt per square centimetre per steradian (the unit the satellite measures in; a bright city centre measures several tens) counts as one light unit. Only the years 2012 to 2024 are observations. Hengl also extended the series back to 2000 with a statistical model; I show those years on the map, clearly marked, but every number below comes from the observed years.</p>
+
+<h2><span class="n">01 · The map</span>Slide through the years, or swipe between two</h2>
+<div class="figure bleed" id="atlas">
+  <div class="controls scroll">
+    <div class="seg" role="group" aria-label="What to show" id="modeBtns"><button class="btn" data-m="year" aria-pressed="true">Lights by year</button><button class="btn" data-m="swipe" aria-pressed="false">Swipe two years</button><button class="btn" data-m="change" aria-pressed="false">Lit up or went dark, 2012 to 2024</button><button class="btn" data-m="dmsp" aria-pressed="false">Long-term average, 1992 to 2024</button></div>
+  </div>
+  <div class="yearbar" id="yearBar">
+    <button class="btn" id="playBtn" aria-label="Play through the years">▶ Play</button>
+    <input type="range" id="yr" min="2000" max="2024" step="1" value="2024" aria-label="Year">
+    <output id="yrOut" for="yr">2024</output><span class="st" id="yrSt">observed</span>
+  </div>
+  <div class="yearbar" id="swipeBar" hidden>
+    <label class="loading" for="yL">Left</label><select id="yL" aria-label="Year on the left"></select>
+    <label class="loading" for="yR">Right</label><select id="yR" aria-label="Year on the right"></select>
+    <span class="loading">Drag the white handle across the map.</span>
+  </div>
+  <div class="controls">
+    <div class="searchbox">
+      <input type="search" id="q" placeholder="Search a country or city" aria-label="Search a country or city" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="sug">
+      <ul class="suggest" id="sug" role="listbox"></ul>
+    </div>
+    <div class="seg" role="group" aria-label="Zoom to" id="viewBtns"><button class="btn" data-v="world">World</button><button class="btn" data-v="africa">Africa</button><button class="btn" data-v="india">South Asia</button><button class="btn" data-v="ukraine">Ukraine</button><button class="btn" data-v="europe">Europe</button></div>
+    <span class="loading" id="loadMsg"></span>
+  </div>
+  <div class="mapgrid">
+    <div id="lmap" role="region" aria-label="Map of night lights"></div>
+    <div class="side">
+      <h4 id="legTitle">Night light</h4>
+      <div id="legend"></div>
+      <h4 class="t">Here</h4>
+      <div id="readout">Click or tap anywhere on the map for the light there each year, and for its country.</div>
+      <h4 class="t" id="ctyTitle">The whole world, light units (millions)</h4>
+      <div id="ctyChart"></div>
+    </div>
+  </div>
+  <div class="src">Night lights: Annual VIIRS Night Lights V2 (Earth Observation Group, Colorado School of Mines; Elvidge and others 2021), annual averages, as consistent yearly layers by Hengl (OpenGeoHub, Zenodo, CC BY 4.0), shown here at about {{grid.km15|int}} km ({{grid.km7|f1}} km for 2012 and 2024 when zoomed in). 2000 to 2011 are modelled backwards from the observations, not observed. Long-term average: DMSP-style lights 1992 to 2024 at 1 km (Li and others 2020, extended by Hengl). No observations north of {{grid.north|f1}}° N. Borders, cities and populations: Natural Earth. Base maps © Esri.</div>
+</div>
+
+<h2><span class="n">02 · A brighter planet</span>More light, and more lit land</h2>
+<p>Add up every lit square kilometre and the Earth gave off {{world.pct|p0}} more light in 2024 than in 2012: {{world.l1|f1}} million light units against {{world.l0|f1}} million. Single years are noisy, so I also compared the average of the first three observed years with the last three, which gives a rise of {{world.pct3|p0}}. Either way the direction is not in doubt: the total fell from one year to the next only in {{world.fell_years.0|raw}}, {{world.fell_years.1|raw}} and {{world.fell_years.2|raw}}. The lit area grew even faster than the light. Land that averaged at least 1 nW across a {{grid.km15|int}} km cell covered {{world.lit0|f1}} million km² in 2012 and {{world.lit1|f1}} million km² in 2024, up {{world.lit_pct|p0}}, from {{world.lit_share0|p1}} to {{world.lit_share1|p1}} of the land.</p>
+<div class="figure"><p class="fig-h">Light seen from space each year</p><p class="fig-sub">Total light on the {{grid.km15|int}} km grid, millions of light units. Solid: observed by VIIRS. Dashed: modelled backwards from the observations, a sketch only. Hover for values.</p><div class="chart" id="worldChart"></div></div>
+<p>The modelled years tell a gentler story, from {{world.m2000|f1}} million units in 2000 to {{world.m2011|f1}} million in 2011, and they do not meet the observations: the first observed year is {{world.jump|p0}} brighter than the last modelled one. That seam is a reminder of what the early years are. They are a curve fitted to each place's observed light and run backwards, good at showing which places were already lit, but not a record of what anyone saw.</p>
+<p>The light is shifting east and south. North America gave off {{reg.na.share0|p1}} of the world's light in 2012 and {{reg.na.share1|p1}} in 2024; Europe and Central Asia went from {{reg.eca.share0|p1}} to {{reg.eca.share1|p1}}. East Asia and the Pacific rose from {{reg.eap.share0|p1}} to {{reg.eap.share1|p1}}, and South Asia from {{reg.sa.share0|p1}} to {{reg.sa.share1|p1}}, the fastest growth of any region ({{reg.sa.pct|p0}}). Sub-Saharan Africa's light grew by {{reg.ssa.pct|p0}}, but from so low a start that its share barely moved: {{reg.ssa.share1|p1}} of the world's light for {{reg.ssa.pop_share|p0}} of its people.</p>
+<div class="figure"><p class="fig-h">Each region's share of the world's light, 2012 and 2024</p><p class="fig-sub">World Bank regions as in Natural Earth. Open circle: 2012. Filled: 2024. Grey tick: share of the world's people. Hover for the change in light.</p><div class="chart" id="regionChart"></div></div>
+
+<h2><span class="n">03 · Where the world lit up</span>China and India, and Africa's cities</h2>
+<p>Most of the new light is in Asia. China's light more than doubled ({{c.CHN.ratio|x1}} times) and India's grew {{c.IND.ratio|x1}} times; between them they gave {{gain.chn_ind|p0}} of all the extra light the planet gave off in 2024 compared with 2012. China's share of the world's light went from {{c.CHN.share0|p1}} to {{c.CHN.share1|p1}}, India's from {{c.IND.share0|p1}} to {{c.IND.share1|p1}}, while the United States, still the brightest country, went from {{c.USA.share0|p1}} to {{c.USA.share1|p1}}. Of the {{n.eligible|int}} countries with at least a million people and some light to start from, {{n.doubled|int}} at least doubled their light and {{n.tripled|int}} at least tripled it.</p>
+<p>The fastest risers started from very little. Nepal's light grew {{c.NPL.ratio|x1}} times; in 2012 the country was living with daily power cuts of many hours, which were ended over 2016 to 2018 as new supply arrived, and Kathmandu's light grew {{city.Kathmandu.ratio|x1}} times. Then come Cambodia ({{c.KHM.ratio|x1}}×), Ghana ({{c.GHA.ratio|x1}}×), Tanzania ({{c.TZA.ratio|x1}}×), Côte d'Ivoire ({{c.CIV.ratio|x1}}×), Senegal ({{c.SEN.ratio|x1}}×), Kenya ({{c.KEN.ratio|x1}}×) and Ethiopia ({{c.ETH.ratio|x1}}×). Africa's cities stand out among the big cities too: Kumasi's light grew {{city.Kumasi.ratio|x1}} times, Addis Ababa's {{city.Addis Ababa.ratio|x1}}, Accra's {{city.Accra.ratio|x1}}, Dar es Salaam's {{city.Dar es Salaam.ratio|x1}} and Abidjan's {{city.Abidjan.ratio|x1}}. Night light follows electricity and economic activity loosely, so these are signs of new grids, roads, homes and businesses, but they are not a measure of any one of them.</p>
+<div class="figure"><p class="fig-h">Brightened and dimmed: the biggest changes, 2012 to 2024</p><p class="fig-sub">Change in each country's total light, on a doubling scale (each step is twice or half). The fifteen fastest risers and every country that lost a tenth or more of its light; countries with at least a million people and 2,000 light units in 2012. Hover for the three-year comparison.</p><div class="chart" id="divChart"></div></div>
+<p>Some rises need a warning label. Iraq's light grew {{c.IRQ.ratio|x1}} times and Iran's {{c.IRN.ratio|x1}} times, and part of that is not cities at all but the flames of gas flares burning off unwanted gas at oil fields, which the satellite records as light. Basra, among the oil fields of southern Iraq, grew {{city.Basra.ratio|x1}} times. Yet Baghdad's own light grew {{city.Baghdad.ratio|x1}} times, and Mosul's light fell by {{city.Mosul.dip.fall|p0}} between 2013 and 2015, after the city was taken by the Islamic State group in 2014, then recovered to {{city.Mosul.ratio|x1}} times its 2012 level by 2024.</p>
+
+<h2><span class="n">04 · Where it went dark</span>War, power cuts, and new street lamps</h2>
+<p>Only {{n.fell|int}} of the {{n.eligible|int}} countries gave off less light in 2024 than in 2012, and {{n.fell10|int}} of them by a tenth or more. Three quite different things lie behind the dimming, and the satellite cannot tell them apart. Turn on "Lit up or went dark" on the map to see them: gold where light grew, magenta where it fell.</p>
+<h3>War</h3>
+<p>The steepest falls are wars. Ukraine's light fell by {{c.UKR.dip.fall|p0}} between 2021 and 2022, the year of the full-scale Russian invasion and the strikes on its power grid, and in 2024 it was still {{c.UKR.pct|abs}}% below 2012 (Crimea is counted with Russia here, following Natural Earth's de facto borders). Kharkiv lost {{city.Kharkiv.dip.fall|p0}} of its light, Zaporizhzhia {{city.Zaporizhzhia.dip.fall|p0}} and Odesa {{city.Odesa.dip.fall|p0}} from their peaks. Syria, already at war in 2012, lost a further {{c.SYR.dip.fall|p0}} of its light by 2015; Aleppo lost {{city.Aleppo.dip.fall|p0}}. Yemen's light fell {{c.YEM.dip.fall|p0}} between 2012 and 2016, as its war escalated in 2015, and Sanaa's {{city.Sanaa.dip.fall|p0}}. In Sudan, Khartoum lost {{city.Khartoum.dip.fall|p0}} of its light between 2022 and 2024, after fighting broke out in the capital in 2023.</p>
+<div class="figure"><p class="fig-h">Cities that went dark, and cities that lit up</p><p class="fig-sub">Light within {{grid.radius_km|int}} km of each city, every year on the {{grid.km15|int}} km grid (observed years only), scaled to each city's own peak. Click a city to find it on the map.</p><div class="mini" id="cityMini"></div></div>
+<h3>Power and money</h3>
+<p>Some countries dimmed without a war. Lebanon's light fell {{c.LBN.dip.fall|p0}} between 2019 and 2022, as an economic collapse left the state power company short of fuel; Beirut lost {{city.Beirut.dip.fall|p0}} of its light before part of it came back. Venezuela's light fell {{c.VEN.dip.fall|p0}} between 2014 and 2020, through an economic crisis and the nationwide blackouts of 2019 (Maracaibo lost {{city.Maracaibo.dip.fall|p0}}), then rose again. Today about half of the country's measured light ({{ven.monagas_share1|p0}} in 2024) comes from the oil fields of Monagas, where gas is flared, which helps explain why its 2024 total is higher than 2012's. Afghanistan's light fell {{c.AFG.dip.fall|p0}} between 2013 and 2022, a fall that deepened after the Taliban returned to power in 2021.</p>
+<h3>New lamps, and lights switched off after midnight</h3>
+<p>The third kind of dimming is the most surprising, because it is happening in rich, peaceful countries. France gave off {{c.FRA.pct|abs}}% less light in 2024 than in 2012, the Netherlands {{c.NLD.pct|abs}}% less, Switzerland {{c.CHE.pct|abs}}% less and the United Kingdom {{c.GBR.pct|abs}}% less; Paris and London each lost about a quarter of their light. Nothing like that happened on the ground. Two changes explain most of it. First, towns have been replacing orange sodium street lamps with white LEDs, and the satellite's sensor cannot see blue light, so the same street lit with LEDs looks dimmer from space even when it is as bright or brighter to the eye. Second, the satellite passes at about half past one in the morning, and more and more towns, thousands of French communes among them, now switch street lights off for part of the night; France's energy-saving rules of 2022 also put out illuminated advertising between one and six in the morning. In the Netherlands, the drop around The Hague ({{city.The Hague.pct|abs}}%) and Rotterdam ({{city.Rotterdam.pct|abs}}%) is mostly the great greenhouses of the Westland, whose growers cut their lighting when gas prices soared in 2022 and have been moving to LEDs.</p>
+<div class="pull">Darker from space does not always mean darker on the ground.</div>
+<p>So a fall in measured light can mean a city under bombardment, a country that cannot pay for fuel, or a town that has changed its lamps. People who count the stars they can see from the ground report that the night sky has been getting brighter much faster than the satellites suggest, largely because of that blind spot for blue light. Gas flares add light that has nothing to do with people's homes and can make an oil country look brighter or darker as flaring rises and falls; Gabon's {{c.GAB.pct|abs}}% fall may be partly that.</p>
+
+<h2><span class="n">05 · Light per person</span>From Qatar to Ethiopia</h2>
+<p>Divide each country's light by its people (Natural Earth's population estimates, mostly for 2019) and set the world average to 100. Qatar scores {{c.QAT.pp|int}}, Libya {{c.LBY.pp|int}} and Saudi Arabia {{c.SAU.pp|int}}: small populations, a great deal of lit infrastructure and, in several of them, gas flares. The United States scores {{c.USA.pp|int}}, Russia {{c.RUS.pp|int}}, the United Kingdom {{c.GBR.pp|int}}, China {{c.CHN.pp|int}} and India {{c.IND.pp|int}}. At the other end, Ethiopia scores {{c.ETH.pp|f1}}, Uganda {{c.UGA.pp|f1}}, DR Congo {{c.COD.pp|f1}} and Bangladesh {{c.BGD.pp|f1}}. Sub-Saharan Africa as a whole scores {{reg.ssa.pp|int}}, South Asia {{reg.sa.pp|int}} and North America {{reg.na.pp|int}}. That is a gap of more than {{gap.na_ssa|int}} to one between the average North American and the average person in sub-Saharan Africa, in light visible from space.</p>
+<div class="figure"><p class="fig-h">Light per person, 2024 (world average = 100)</p><p class="fig-sub">The ten countries with most and least light per person, among those with at least a million people; log scale. Hover for values.</p><div class="chart" id="ppChart"></div></div>
+<details><summary>Every country: light in 2012 and 2024 (click a row to find it on the map)</summary>
+<div class="tablewrap"><table class="t" id="ctyTable"><thead><tr><th data-k="n">Country</th><th class="num" data-k="l0">2012</th><th class="num" data-k="l1">2024</th><th class="num" data-k="c">Change</th><th class="num wide" data-k="c3">3-year</th><th class="num wide" data-k="pp">Per person</th></tr></thead><tbody></tbody></table></div>
+<p class="src">Light units, thousands (one unit is a square kilometre shining at 1 nW/cm²/sr). 3-year: change between the averages of 2012 to 2014 and 2022 to 2024. Per person: world average = 100. Download all of it as data/countries.csv.</p>
+</details>
+
+<h2><span class="n">06 · The long view</span>Thirty years of light in one picture</h2>
+<p>Before VIIRS, night lights came from the older DMSP satellites, flown since the 1970s, whose cameras were coarser and saturated in city centres. Researchers have stitched DMSP and VIIRS into a single DMSP-style series from 1992. The extract I used holds only one picture from it, the average light of every square kilometre over all the years from 1992 to 2024, so it cannot show change, but it is the best map of where light has been for a generation. Choose "Long-term average" on the map to see it; it matches the VIIRS map closely (correlation {{grid.dmsp_corr|f2}} on a log scale).</p>
+
+<h2><span class="n">07 · How I did this</span>Methods and caveats</h2>
+<p><b>Night lights.</b> Hengl's yearly layers are the Earth Observation Group's Annual VIIRS Night Lights V2, version 2.1, at 500 m, stored in tenths of a nW/cm²/sr. I used the overview levels built into his files: about {{grid.km15|int}} km for every year and {{grid.km7|f1}} km for 2012 and 2024. In this release the layers for 2022, 2023 and 2024 are stored in whole nW rather than tenths (on bright cells, 2022 divided by 2021 has a median of {{grid.scale_ratio|f3}}), so I converted every year to whole nW and rounded it the same way, set negative values (noise) to zero, and left out the strip north of {{grid.north|f1}}° N, which has no observations. Light units are radiance times area. About {{grid.sea_pct|f1}}% of the light falls outside any country (boats, oil platforms and coastal glare) and is counted in the world total but not in any country's.</p>
+<p><b>Countries, cities and people.</b> Each {{grid.km15|int}} km cell belongs to the Natural Earth country that holds most of its land; Natural Earth's de facto borders put Crimea in Russia and do not imply any view on disputed places. Cities are Natural Earth's populated places with at least 500,000 people, measured within {{grid.radius_km|int}} km of the city's point, so neighbouring cities can overlap. Light per person uses Natural Earth's population estimates, mostly for 2019. Rankings leave out countries with fewer than a million people or under 2,000 light units in 2012, and cities with under a million people or very little light in 2012, because small numbers make huge ratios.</p>
+<p><b>What the light is.</b> The satellite passes at about 1.30 am local time. It sees streets, homes, roads, ports, industry, greenhouses and gas flares; the product is designed to leave out fires, moonlight and other passing light. It does not see blue light below about 500 nm, so changing from sodium lamps to white LEDs makes places look dimmer from space. Part-night lighting, clouds, snow and the angle of view add noise, which is why I check single years against three-year averages: on that check {{n.disagree|int}} of the {{n.eligible|int}} countries change direction, every one of them within a tenth of no change on one of the two measures.</p>
+<p><b>The modelled years.</b> The years 2000 to 2011 were made by Hengl by fitting a logistic curve to each pixel's observed light from 2012 and running it backwards. They are shown for orientation only, they do not join smoothly onto the observations, and no claim on this page rests on them. The DMSP layer is a long-term average, not a yearly series. A DMSP standard deviation layer in the same extract could not be read because the file was damaged, so it is not used.</p>
+
+<div class="cta">
+  <a class="p" href="https://github.com/Tristan-Hotham/earth-at-night">Data and code</a>
+  <a href="https://doi.org/10.5281/zenodo.23857868">Paper (Zenodo)</a>
+  <a href="https://blog.tristanhotham.com/2026/10/31/earth-at-night/">Blog post</a>
+  <a href="https://blog.tristanhotham.com/">All posts</a>
+</div>
+<footer>
+  <p>Dr Tristan Hotham, Independent researcher. ORCID 0000-0003-4931-9349. Cite as: Hotham, T. (2026) The Earth at night: where the world lit up and where it went dark, from satellite night lights 2012 to 2024. https://doi.org/10.5281/zenodo.23857868</p>
+  <p>I wrote the text, with drafting and editing assistance from Claude (Anthropic), which also helped prepare the analysis code. I reviewed and checked all text and results.</p>
+  <p>Night lights: Annual VIIRS Night Lights (VNL) V2, Earth Observation Group, Payne Institute for Public Policy, Colorado School of Mines (Elvidge, Zhizhin, Ghosh, Hsu and Taneja 2021), as yearly 500 m layers 2000 to 2024 by Tomislav Hengl, OpenGeoHub (Zenodo 10.5281/zenodo.7750174, CC BY 4.0), with years before 2012 extrapolated by logistic regression. DMSP-style long-term average 1992 to 2024 from the same record, after Li, Zhou, Zhao and Zhao (2020), A harmonized global nighttime light dataset 1992 to 2018, Scientific Data 7, 168. Countries, populations and populated places: Natural Earth (public domain). Base maps and hill shading © Esri. Map library: Leaflet.</p>
+  <p>Text, figures and derived data: CC BY 4.0; code: MIT. Other studies: <a href="https://maps.tristanhotham.com/ocean-depth/">How deep is the sea?</a>, <a href="https://maps.tristanhotham.com/world-terrain/">How high is the world?</a>, <a href="https://blog.tristanhotham.com/">all posts</a>.</p>
+</footer>
+</div>
+<div class="tip" id="tip"></div>
+<button class="btn theme" id="theme" aria-label="Toggle dark mode">◐</button>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const PD = /*PD*/;
+const R = PD.R, CT = PD.C, YEARS = PD.years, OBS0 = 2012;
+const NS = "http://www.w3.org/2000/svg";
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const el = (t, a = {}, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+const fmt = n => n == null || isNaN(n) ? "n/a" : Math.round(n).toLocaleString("en-GB");
+const f1 = n => n == null || isNaN(n) ? "n/a" : n.toLocaleString("en-GB", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+const chg = r => r == null ? "n/a" : (r >= 1 ? "+" : "-") + Math.abs(Math.round((r - 1) * 100)) + "%";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const tip = document.getElementById("tip");
+function showTip(h, x, y) { tip.innerHTML = h; tip.style.display = "block"; const w = tip.offsetWidth; x = Math.max(w / 2 + 8, Math.min(innerWidth - w / 2 - 8, x)); tip.style.left = x + scrollX + "px"; tip.style.top = y + scrollY + "px"; }
+function hideTip() { tip.style.display = "none"; }
+function hover(node, h) { node.style.cursor = "pointer"; node.setAttribute("tabindex", "0"); const s = () => { const r = node.getBoundingClientRect(); showTip(h, r.left + r.width / 2, r.top); }; node.addEventListener("pointerenter", s); node.addEventListener("pointerleave", hideTip); node.addEventListener("focus", s); node.addEventListener("blur", hideTip); }
+const redraws = [];
+function resp(box, render) { let last = 0; const go = (force) => { const w = Math.max(280, Math.round(box.clientWidth)); if (!force && Math.abs(w - last) < 4) return; last = w; box.innerHTML = ""; render(w, w < 560); }; new ResizeObserver(() => go()).observe(box); go(); redraws.push(() => go(true)); }
+const lbl = (svg, x, y, s, cls = "lab", anchor = "start") => { const t = el("text", { x, y, class: cls, "text-anchor": anchor }, svg); t.textContent = s; return t; };
+const msg = document.getElementById("loadMsg");
+const GOLD = () => css("--gold"), MAG = () => css("--mag"), INK = () => css("--ink"), GREY = () => css("--grey");
+
+/* palettes, as in the images */
+const STOPS = PD.pal, DSTOPS = PD.dpal, CH = PD.change;
+function ramp(st, v) { const lv = Math.log(Math.max(v, .01)); if (lv <= Math.log(st[0][0])) return st[0][1]; for (let i = 1; i < st.length; i++) if (lv <= Math.log(st[i][0])) { const a = st[i - 1], b = st[i], t = (lv - Math.log(a[0])) / (Math.log(b[0]) - Math.log(a[0])); return a[1].map((x, k) => x + (b[1][k] - x) * t); } return st[st.length - 1][1]; }
+const rgba = c => `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${(c[3] / 255).toFixed(2)})`;
+
+/* hero mark: a dark globe with lights */
+(() => { const g = document.getElementById("heroMark");
+  el("circle", { cx: 60, cy: 60, r: 54, fill: "#0D1020" }, g);
+  const pts = [[38, 40, 5, 1], [46, 47, 3, 1], [52, 38, 2.4, 1], [70, 52, 4, 1], [78, 60, 6, 1], [86, 48, 2.6, 1], [64, 70, 3, 1], [44, 72, 2.2, 0], [34, 58, 3.4, 0], [90, 74, 2.4, 1], [58, 86, 3, 1], [74, 84, 2, 1], [28, 46, 1.8, 1], [96, 62, 1.8, 0]];
+  pts.forEach(p => { el("circle", { cx: p[0], cy: p[1], r: p[2] * 2.2, fill: p[3] ? "#F2B648" : "#D03A99", opacity: .18 }, g); el("circle", { cx: p[0], cy: p[1], r: p[2], fill: p[3] ? "#FFD27A" : "#F07BC4" }, g); });
+  el("circle", { cx: 60, cy: 60, r: 54, fill: "none", stroke: "currentColor", "stroke-width": 2.6 }, g);
+})();
+
+/* ===== map ===== */
+const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/";
+const N = PD.north, S = PD.south, DN = PD.dnorth, TOP = 87.37, BOT = -62.0008;
+const LYDEF = { base: "dark", hill: false, hillK: 45, names: true, borders: true, borderK: 35, cities: false, alpha: 100 };
+let mode = "year";
+const LY = { ...LYDEF };
+try { Object.assign(LY, JSON.parse(localStorage.getItem("ean_layers") || "{}")); } catch (e) {}
+const saveLY = () => { try { localStorage.setItem("ean_layers", JSON.stringify(LY)); } catch (e) {} };
+const small = innerWidth < 600;
+const map = L.map("lmap", { minZoom: 1, maxZoom: 11, zoomSnap: .5, worldCopyJump: false, maxBounds: [[-75, -240], [85, 240]], scrollWheelZoom: false }).setView([22, 15], small ? 1 : 2);
+map.on("click", () => map.scrollWheelZoom.enable());
+map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+[["hill", 250], ["lightsL", 400], ["lightsR", 401], ["lines", 450], ["names", 500], ["cities", 610]].forEach(([n, z]) => { map.createPane(n); map.getPane(n).style.zIndex = z; });
+["hill", "lightsL", "lightsR", "lines", "names"].forEach(n => map.getPane(n).style.pointerEvents = "none");
+let base = null, names = null, hill = null;
+function setBase() {
+  [base, names].forEach(l => l && map.removeLayer(l)); base = names = null;
+  const dark = LY.base !== "light";
+  if (LY.base === "dark" || LY.base === "light") base = L.tileLayer(`${ESRI}Canvas/World_${dark ? "Dark" : "Light"}_Gray_Base/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 16, attribution: "Base map © Esri" }).addTo(map);
+  if (LY.base === "imagery") base = L.tileLayer(`${ESRI}World_Imagery/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 17, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }).addTo(map);
+  if (LY.names) names = L.tileLayer(`${ESRI}Canvas/World_${dark ? "Dark" : "Light"}_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, { pane: "names", maxZoom: 16, attribution: "Labels © Esri" }).addTo(map);
+  document.getElementById("lmap").style.background = LY.base === "light" ? "#D9D9D9" : "#0D1020";
+}
+function setHill() { if (hill) map.removeLayer(hill); hill = null; if (!LY.hill) return; hill = L.tileLayer(`${ESRI}Elevation/World_Hillshade${LY.base === "light" ? "" : "_Dark"}/MapServer/tile/{z}/{y}/{x}`, { pane: "hill", maxZoom: 16, opacity: LY.hillK / 100, attribution: "Hill shading © Esri" }).addTo(map); }
+
+/* the light layers: Web Mercator images, one per year */
+const BND = L.latLngBounds([S, -180], [N, 180]), DBND = L.latLngBounds([S, -180], [DN, 180]);
+let year = 2024, yL = 2012, yR = 2024, ovL = null, ovR = null, swipeX = .5;
+const isObs = y => y >= OBS0;
+const src = y => (y === 2012 || y === 2024) && map.getZoom() >= 4 ? `data/tiles/lights_${y}_7km.png` : `data/tiles/lights_${y}.png`;
+function overlay(url, pane, b = BND) { return L.imageOverlay(url, b, { pane, opacity: LY.alpha / 100, interactive: false, className: "nl", attribution: '<a href="https://doi.org/10.5281/zenodo.7750174">VIIRS VNL V2 (EOG, Mines), via Hengl</a>' }); }
+function setOv(which, url, b) {
+  const cur = which === "L" ? ovL : ovR;
+  if (cur && cur._url === url) return;
+  const o = overlay(url, which === "L" ? "lightsL" : "lightsR", b).addTo(map);
+  o.once("load", () => { if (cur) map.removeLayer(cur); });
+  setTimeout(() => { if (cur && map.hasLayer(cur) && (which === "L" ? ovL : ovR) !== cur) map.removeLayer(cur); }, 1500);
+  if (which === "L") ovL = o; else ovR = o;
+}
+function clearOv(which) { const cur = which === "L" ? ovL : ovR; if (cur) map.removeLayer(cur); if (which === "L") ovL = null; else ovR = null; }
+function drawLights() {
+  if (mode === "year") { setOv("L", src(year)); clearOv("R"); }
+  else if (mode === "swipe") { setOv("L", src(yL)); setOv("R", src(yR)); }
+  else if (mode === "change") { setOv("L", "data/tiles/change_7km.png"); clearOv("R"); }
+  else { setOv("L", "data/tiles/dmsp_avg.png", DBND); clearOv("R"); }
+  clip(); tags();
+}
+map.on("zoomend", () => { if (mode === "year" || mode === "swipe") drawLights(); drawCities(); });
+
+/* swipe: clip the two panes either side of a draggable divider */
+const box = document.getElementById("lmap");
+const sw = L.DomUtil.create("div", "swipe", box); sw.innerHTML = "<i></i><b aria-label='Drag to compare' role='slider' tabindex='0'>⇔</b>"; sw.style.display = "none";
+const tagL = L.DomUtil.create("div", "yrtag l", box), tagR = L.DomUtil.create("div", "yrtag r", box);
+function tags() {
+  const t = y => `${y}<small>${isObs(y) ? "observed" : "modelled"}</small>`;
+  tagL.style.display = tagR.style.display = mode === "swipe" ? "block" : "none";
+  if (mode === "swipe") { tagL.innerHTML = t(yL); tagR.innerHTML = t(yR); }
+}
+function clip() {
+  const pl = map.getPane("lightsL"), pr = map.getPane("lightsR");
+  if (mode !== "swipe") { pl.style.clip = pr.style.clip = ""; sw.style.display = "none"; return; }
+  const nw = map.containerPointToLayerPoint([0, 0]), se = map.containerPointToLayerPoint(map.getSize()), x = nw.x + map.getSize().x * swipeX;
+  pl.style.clip = `rect(${nw.y}px,${x}px,${se.y}px,${nw.x}px)`; pr.style.clip = `rect(${nw.y}px,${se.x}px,${se.y}px,${x}px)`;
+  sw.style.display = "block"; sw.style.left = (map.getSize().x * swipeX) + "px";
+}
+map.on("move zoom resize", clip);
+(() => { const h = sw.querySelector("b"); let drag = false;
+  const mv = e => { if (!drag) return; const r = box.getBoundingClientRect(); swipeX = Math.max(.02, Math.min(.98, (e.clientX - r.left) / r.width)); clip(); e.preventDefault(); };
+  h.addEventListener("pointerdown", e => { drag = true; h.setPointerCapture(e.pointerId); map.dragging.disable(); e.stopPropagation(); });
+  h.addEventListener("pointermove", mv);
+  h.addEventListener("pointerup", e => { drag = false; map.dragging.enable(); });
+  h.addEventListener("keydown", e => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { swipeX = Math.max(.02, Math.min(.98, swipeX + (e.key === "ArrowLeft" ? -.04 : .04))); clip(); e.preventDefault(); } });
+  ["click", "dblclick", "mousedown", "touchstart", "wheel"].forEach(t => h.addEventListener(t, e => e.stopPropagation(), { passive: t !== "click" }));
+})();
+
+/* modes and the year controls */
+const yr = document.getElementById("yr"), yrOut = document.getElementById("yrOut"), yrSt = document.getElementById("yrSt");
+function setYear(y) { year = y; yr.value = y; yrOut.textContent = y; yrSt.textContent = isObs(y) ? "observed" : "modelled"; yrSt.className = "st" + (isObs(y) ? "" : " mod"); drawLights(); refreshReadout(); }
+yr.addEventListener("input", () => setYear(+yr.value));
+let timer = null; const play = document.getElementById("playBtn");
+play.onclick = () => { if (timer) { clearInterval(timer); timer = null; play.textContent = "▶ Play"; return; } if (mode !== "year") setMode("year"); if (year >= 2024) setYear(2000); play.textContent = "❚❚ Pause"; timer = setInterval(() => { if (year >= 2024) { clearInterval(timer); timer = null; play.textContent = "▶ Play"; return; } setYear(year + 1); }, 650); };
+const sL = document.getElementById("yL"), sR = document.getElementById("yR");
+YEARS.forEach(y => { [sL, sR].forEach(s => { const o = document.createElement("option"); o.value = y; o.textContent = y + (isObs(y) ? "" : " (modelled)"); s.appendChild(o); }); });
+sL.value = yL; sR.value = yR;
+sL.onchange = () => { yL = +sL.value; drawLights(); refreshReadout(); }; sR.onchange = () => { yR = +sR.value; drawLights(); refreshReadout(); };
+function setMode(m) {
+  mode = m; document.querySelectorAll("#modeBtns .btn").forEach(b => b.setAttribute("aria-pressed", b.dataset.m === m));
+  document.getElementById("yearBar").hidden = m !== "year"; document.getElementById("swipeBar").hidden = m !== "swipe";
+  if (m !== "year" && timer) play.onclick();
+  drawCities();
+  drawLights(); legend(); refreshReadout();
+}
+document.querySelectorAll("#modeBtns .btn").forEach(b => b.onclick = () => setMode(b.dataset.m));
+const VIEWS = { world: [[22, 15], small ? 1 : 2], africa: [[3, 20], small ? 2.5 : 3.5], india: [[24, 82], small ? 3.5 : 4.5], ukraine: [[48.6, 33], small ? 4.5 : 5.5], europe: [[50, 10], small ? 3 : 4] };
+document.querySelectorAll("#viewBtns .btn").forEach(b => b.onclick = () => { const v = VIEWS[b.dataset.v]; map.flyTo(v[0], v[1], { duration: .8 }); });
+
+/* borders, countries */
+let BORD = null, borderL = null;
+function addBbox(b) { b.features.forEach(f => { let x0 = 999, y0 = 999, x1 = -999, y1 = -999; const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates; polys.forEach(p => p[0].forEach(q => { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); })); f.bbox = [x0, y0, x1, y1]; }); return b; }
+function pip(lon, lat, ring) { let c = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const a = ring[i], b = ring[j]; if ((a[1] > lat) !== (b[1] > lat) && lon < (b[0] - a[0]) * (lat - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
+function countryAt(lon, lat) { if (!BORD) return null; let best = null, bd = 1e9; for (const f of BORD.features) { const bb = f.bbox; if (lon < bb[0] - .3 || lon > bb[2] + .3 || lat < bb[1] - .3 || lat > bb[3] + .3) continue; const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates; for (const p of polys) if (pip(lon, lat, p[0]) && !p.slice(1).some(r => pip(lon, lat, r))) return f.properties.a3; } return null; }
+async function loadBorders() { if (BORD) return BORD; BORD = addBbox(await fetch("data/page/borders.json").then(r => r.json())); return BORD; }
+function drawBorders() { if (borderL) { map.removeLayer(borderL); borderL = null; } if (!LY.borders || !BORD) return; const dark = LY.base !== "light"; borderL = L.geoJSON(BORD, { pane: "lines", interactive: false, style: { color: dark ? "#C9CCE0" : "#2B3040", weight: .8, opacity: .15 + LY.borderK / 100 * .7, fill: false } }).addTo(map); }
+
+/* cities */
+let CITIES = null, cityL = L.layerGroup();
+const cityR = L.canvas({ pane: "cities", padding: .3, tolerance: 5 });
+const chCol = r => { for (let i = CH.length - 1; i >= 0; i--) if (r >= CH[i].lo) return `rgb(${CH[i].rgb.join(",")})`; return `rgb(${CH[0].rgb.join(",")})`; };
+const cRatio = c => c[5] > 0 ? c[6] / c[5] : c[6] > 0 ? 99 : 1;
+async function loadCities() { if (CITIES) return CITIES; CITIES = await fetch("data/page/cities.json").then(r => r.json()); return CITIES; }
+function drawCities() {
+  cityL.clearLayers(); if (!(LY.cities || mode === "change") || !CITIES) { map.removeLayer(cityL); return; }
+  const z = map.getZoom(), k = z < 3 ? 1.5 : z < 5 ? 2.4 : 3.4;
+  for (const c of CITIES) { if (z < 3 && c[4] < 1e6) continue; const r = cRatio(c); L.circleMarker([c[2], c[3]], { renderer: cityR, radius: Math.max(z < 3 ? 2 : 3, Math.sqrt(c[4] / 1e6) * k), color: "#111", weight: .8, fillColor: r ? chCol(r) : "#999", fillOpacity: .95 }).bindPopup(() => cityPopup(c)).addTo(cityL); }
+  cityL.addTo(map);
+}
+
+/* sparkline for popups and the side panel */
+function spark(series, w = 260, h = 92, opt = {}) {
+  const s = el("svg", { viewBox: `0 0 ${w} ${h}` }); const L0 = 34, R0 = w - 6, T0 = 8, B0 = h - 18;
+  const mx = Math.max(...series.filter(v => v != null && v >= 0), 1);
+  const X = i => L0 + (R0 - L0) * i / (series.length - 1), Y = v => B0 - (B0 - T0) * v / mx;
+  const fg = opt.fg || css("--fg"), mu = opt.mu || css("--muted");
+  const kf = v => v >= 9950 ? Math.round(v / 1000) + "k" : v >= 1000 ? (v / 1000).toFixed(1) + "k" : v >= 100 ? fmt(v) : f1(v);
+  [0, mx / 2, mx].forEach(v => { el("line", { x1: L0, x2: R0, y1: Y(v), y2: Y(v), stroke: mu, "stroke-opacity": .25 }, s); const t = lbl(s, L0 - 4, Y(v) + 3, kf(v), "lab s m", "end"); t.style.fill = mu; t.style.fontSize = "10px"; });
+  const pts = series.map((v, i) => [X(i), Y(Math.max(0, v || 0))]);
+  const k = YEARS.indexOf(OBS0);
+  el("path", { d: "M" + pts.slice(0, k + 1).map(p => p.join(" ")).join(" L"), fill: "none", stroke: mu, "stroke-width": 1.4, "stroke-dasharray": "3 3" }, s);
+  el("path", { d: "M" + pts.slice(k).map(p => p.join(" ")).join(" L"), fill: "none", stroke: opt.col || GOLD(), "stroke-width": 2.2 }, s);
+  if (opt.mark != null) { const i = YEARS.indexOf(opt.mark); if (i >= 0) el("circle", { cx: pts[i][0], cy: pts[i][1], r: 3.5, fill: fg }, s); }
+  [[2000, "start"], [2012, "middle"], [2024, "end"]].forEach(([y, a]) => { const t = lbl(s, X(YEARS.indexOf(y)), h - 4, y, "lab s m", a); t.style.fill = mu; t.style.fontSize = "10px"; });
+  return s;
+}
+
+/* click: the cell's yearly values and its country */
+const BLK = new Map();
+const rowLat = r => TOP - (TOP - BOT) * (r + .5) / 1120, colLon = c => -180 + 360 * (c + .5) / 2700;
+async function cellAt(lat, lon) {
+  const r = Math.floor((TOP - lat) / (TOP - BOT) * 1120), c = Math.floor((lon + 180) / 360 * 2700);
+  if (r < 0 || r >= 1120 || c < 0 || c >= 2700) return null;
+  const key = Math.floor(rowLat(r) / 10) * 10 + "_" + Math.floor(colLon(c) / 10) * 10;
+  if (!BLK.has(key)) { BLK.set(key, fetch(`data/page/cells/${key}.json`).then(x => x.ok ? x.json() : []).catch(() => [])); }
+  const arr = await BLK.get(key);
+  const hit = arr.find(e => e[0] === r && e[1] === c);
+  return { r, c, v: hit ? hit.slice(2) : YEARS.map(() => rowLat(r) > N ? -1 : 0) };
+}
+function nearestCity(lat, lon) { if (!CITIES) return null; let best = null, bd = 30; for (const c of CITIES) { if (Math.abs(c[2] - lat) > .4) continue; const d = hav(lat, lon, c[2], c[3]); if (d < bd) { bd = d; best = c; } } return best ? [best, bd] : null; }
+const hav = (a, b, c, d) => { const p = Math.PI / 180, x = Math.sin((c - a) * p / 2) ** 2 + Math.cos(a * p) * Math.cos(c * p) * Math.sin((d - b) * p / 2) ** 2; return 2 * 6371 * Math.asin(Math.sqrt(x)); };
+let lastClick = null, pinM = null;
+function vAt(cell, y) { const v = cell.v[YEARS.indexOf(y)]; return v < 0 ? null : v; }
+function cellHtml(cell, a3, nc) {
+  const ctry = a3 && CT[a3] ? CT[a3] : null;
+  let h = `<b class="h">${nc ? esc(nc[0][0]) + (nc[1] > 8 ? ` <span class="mut" style="font:400 12px var(--mono)">${Math.round(nc[1])} km away</span>` : "") : ctry ? esc(ctry.n) : "Open sea or no country"}</b>`;
+  h += `<span class="mut">${ctry ? esc(ctry.n) + " · " : ""}${f1(rowLat(cell.r))}°, ${f1(colLon(cell.c))}° · one ${R.grid.km15r} km cell</span>`;
+  if (vAt(cell, 2012) == null) return h + "<br>No observations this far north.";
+  const a = vAt(cell, 2012), b = vAt(cell, 2024);
+  if (mode === "swipe") h += `<span class="big">${fmt(vAt(cell, yL))} → ${fmt(vAt(cell, yR))} nW</span>average night light in ${yL} and ${yR}${isObs(yL) && isObs(yR) ? "" : " (modelled year included)"}`;
+  else if (mode === "change") h += `<span class="big">${fmt(a)} → ${fmt(b)} nW</span>average night light, 2012 to 2024 (${a > 0 ? chg((b + .5) / (a + .5)) : b > 0 ? "new light" : "no light"})`;
+  else if (mode === "dmsp") h += `<span class="big">${fmt(vAt(cell, 2024))} nW in 2024</span>The long-term layer is drawn at 1 km and cannot be read here.`;
+  else h += `<span class="big">${fmt(vAt(cell, year))} nW</span>average night light in ${year}${isObs(year) ? "" : " (modelled)"}`;
+  return h;
+}
+async function onClick(e) {
+  const { lat } = e.latlng, lon = ((e.latlng.lng + 540) % 360) - 180; lastClick = [lat, lon];
+  await Promise.all([loadBorders(), loadCities()]);
+  const cell = await cellAt(lat, lon); if (!cell) return;
+  const a3 = countryAt(lon, lat), nc = nearestCity(lat, lon);
+  const html = cellHtml(cell, a3, nc);
+  const div = document.createElement("div"); div.innerHTML = html;
+  if (vAt(cell, 2012) != null) { div.appendChild(spark(cell.v.map(v => v < 0 ? null : v), 240, 86, { fg: "#222", mu: "#777", mark: mode === "year" ? year : null })); const n = document.createElement("span"); n.className = "mut"; n.textContent = "nW each year; dashed: modelled"; div.appendChild(n); }
+  L.popup({ maxWidth: 280 }).setLatLng(e.latlng).setContent(div).openOn(map);
+  showCountry(a3);
+  document.getElementById("readout").innerHTML = html;
+}
+map.on("click", onClick);
+function refreshReadout() { if (lastClick) onClick({ latlng: L.latLng(lastClick[0], lastClick[1]) }).then(() => map.closePopup()); }
+function cityPopup(c) {
+  const r = cRatio(c);
+  const div = document.createElement("div");
+  div.innerHTML = `<b class="h">${esc(c[0])}</b><span class="mut">${esc(c[1])} · ${fmt(c[4])} people (Natural Earth)</span><span class="big">${r ? chg(r) : "n/a"}</span>light within ${R.grid.radius_km} km, 2012 to 2024 (${fmt(c[5])} to ${fmt(c[6])} units)`;
+  div.appendChild(spark(c[7], 240, 86, { fg: "#222", mu: "#777" }));
+  const n = document.createElement("span"); n.className = "mut"; n.textContent = "Light units each year on the 15 km grid; dashed: modelled"; div.appendChild(n);
+  return div;
+}
+
+/* side panel: a country's (or the world's) light each year */
+function showCountry(a3) {
+  const box = document.getElementById("ctyChart"), t = document.getElementById("ctyTitle"); box.innerHTML = "";
+  if (a3 && CT[a3]) { const c = CT[a3]; t.textContent = `${c.n}, light units (thousands)`; box.appendChild(spark(c.s.map(v => v / 1000), 300, 120));
+    const p = document.createElement("p"); p.className = "src"; p.innerHTML = `2012 to 2024: <b>${chg(c.c)}</b> (three-year averages ${chg(c.c3)}). ${(c.sh * 100).toFixed(2)}% of the world's light in 2024${c.pp != null ? `; ${f1(c.pp)} per person (world = 100)` : ""}.${c.d && c.d[2] > .15 ? ` Deepest fall: ${Math.round(c.d[2] * 100)}% from ${c.d[0]} to ${c.d[1]}.` : ""}`; box.appendChild(p); }
+  else { t.textContent = "The whole world, light units (millions)"; box.appendChild(spark(R.world.series, 300, 120)); }
+}
+showCountry(null);
+
+/* legend */
+function legend() {
+  const box = document.getElementById("legend"), t = document.getElementById("legTitle"); box.innerHTML = "";
+  if (mode === "change") {
+    t.textContent = "Change in light, 2012 to 2024";
+    const g = document.createElement("div"); g.className = "lg";
+    CH.slice().reverse().forEach(c => { g.insertAdjacentHTML("beforeend", `<i style="background:rgb(${c.rgb.join(",")})"></i><span>${esc(c.label)}</span>`); });
+    box.appendChild(g);
+    box.insertAdjacentHTML("beforeend", `<p class="src">Cells of about ${R.grid.km7r} km that averaged at least ${PD.chmin} nW in either year; paler where the light is faint. City dots (Layers) use the same colours for light within ${R.grid.radius_km} km.</p>`);
+    return;
+  }
+  const dm = mode === "dmsp", st = dm ? DSTOPS : STOPS, W0 = 300, s = el("svg", { viewBox: `0 0 ${W0} 74` }, box), x0 = 6, x1 = W0 - 10;
+  t.textContent = dm ? "Long-term average light, 1992 to 2024" : "Night light, annual average";
+  const lo = Math.log(dm ? 1 : .5), hi = Math.log(dm ? 63 : 255), xs = v => x0 + (x1 - x0) * (Math.log(v) - lo) / (hi - lo);
+  el("rect", { x: x0, y: 8, width: x1 - x0, height: 18, fill: "#0D1020" }, s);
+  const g = el("linearGradient", { id: "lg" }, s);
+  for (let i = 0; i <= 24; i++) { const v = Math.exp(lo + (hi - lo) * i / 24); const c = ramp(st, v); el("stop", { offset: i / 24, "stop-color": `rgb(${c.slice(0, 3).map(Math.round).join(",")})`, "stop-opacity": (c[3] / 255).toFixed(2) }, g); }
+  el("rect", { x: x0, y: 8, width: x1 - x0, height: 18, fill: "url(#lg)", stroke: css("--border") }, s);
+  (dm ? [1, 4, 12, 30, 63] : [1, 3, 10, 30, 100, 255]).forEach(v => { el("line", { x1: xs(v), x2: xs(v), y1: 26, y2: 31, stroke: css("--fg") }, s); lbl(s, xs(v), 43, v === 255 ? "255+" : v, "lab s", v === 255 || v === 63 ? "end" : "middle"); });
+  lbl(s, x0, 60, dm ? "DMSP-style brightness (0 to 63), 1 km, log scale" : "nW/cm²/sr, log scale; under 0.5 not drawn", "lab s m");
+  lbl(s, x0, 72, dm ? "An average over all years: no change shown" : (mode === "swipe" ? `Left ${yL}, right ${yR}` : `${year}, ${isObs(year) ? "observed by VIIRS" : "modelled, not observed"}`), "lab s m");
+}
+
+/* search */
+const q = document.getElementById("q"), sug = document.getElementById("sug");
+let SIDX = null, sel = -1;
+async function index() { if (SIDX) return SIDX; await loadCities(); await loadBorders(); SIDX = []; for (const a3 in CT) SIDX.push({ n: CT[a3].n, s: "country", a3 }); for (const c of CITIES) SIDX.push({ n: c[0], s: c[1], c }); return SIDX; }
+const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+q.addEventListener("input", async () => { const v = norm(q.value.trim()); if (v.length < 2) { sug.style.display = "none"; return; } await index();
+  const hits = SIDX.filter(x => norm(x.n).includes(v)).sort((a, b) => (norm(a.n).startsWith(v) ? 0 : 1) - (norm(b.n).startsWith(v) ? 0 : 1) || (a.c ? 1 : 0) - (b.c ? 1 : 0)).slice(0, 12);
+  sug.innerHTML = hits.map((h, i) => `<li role="option" data-i="${i}">${esc(h.n)} <span>${esc(h.s)}</span></li>`).join(""); sug.style.display = hits.length ? "block" : "none"; q.setAttribute("aria-expanded", hits.length > 0); sel = -1;
+  sug.querySelectorAll("li").forEach((li, i) => li.onclick = () => go(hits[i])); sug._hits = hits; });
+q.addEventListener("keydown", e => { const lis = sug.querySelectorAll("li"); if (!lis.length) return; if (e.key === "ArrowDown" || e.key === "ArrowUp") { sel = (sel + (e.key === "ArrowDown" ? 1 : -1) + lis.length) % lis.length; lis.forEach((l, i) => l.setAttribute("aria-selected", i === sel)); e.preventDefault(); } if (e.key === "Enter") { go(sug._hits[Math.max(0, sel)]); e.preventDefault(); } });
+function go(h) {
+  sug.style.display = "none"; q.value = h.n;
+  if (h.c) { map.flyTo([h.c[2], h.c[3]], 8, { duration: .8 }); setTimeout(() => L.popup({ maxWidth: 280 }).setLatLng([h.c[2], h.c[3]]).setContent(cityPopup(h.c)).openOn(map), 900); return; }
+  const f = BORD.features.find(f => f.properties.a3 === h.a3); if (f) { const bb = f.bbox; map.flyToBounds([[bb[1], bb[0]], [bb[3], bb[2]]], { maxZoom: 6, duration: .8 }); }
+  showCountry(h.a3);
+}
+window.goCity = name => { loadCities().then(() => { const c = CITIES.find(x => x[0] === name); if (c) { document.getElementById("atlas").scrollIntoView({ behavior: "smooth" }); go({ n: c[0], c }); } }); };
+window.goCountry = a3 => { loadBorders().then(() => { document.getElementById("atlas").scrollIntoView({ behavior: "smooth" }); go({ n: CT[a3].n, a3 }); }); };
+
+/* layers panel */
+(function layerControl() {
+  const Ctl = L.Control.extend({ options: { position: "topright" }, onAdd() {
+    const d = L.DomUtil.create("div"); L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
+    d.innerHTML = `<button class="lyrBtn" aria-expanded="false" aria-controls="lyrPanel">Map layers</button>
+<div class="lyrPanel" id="lyrPanel" hidden>
+ <div class="row"><label for="lyMode" style="font-weight:600">Lights layer</label><div class="sub"><select id="lyMode" aria-label="Lights layer"><option value="year">Lights by year</option><option value="swipe">Swipe two years</option><option value="change">Lit up or went dark, 2012 to 2024</option><option value="dmsp">Long-term average, 1992 to 2024</option></select></div><div class="sub"><span>strength</span><input type="range" id="lyAlpha" min="20" max="100" step="5" aria-label="Lights layer opacity"></div></div>
+ <div class="row"><label><input type="checkbox" id="lyCities"> Cities: change in light</label><div class="sub">Always shown with the change layer.</div></div>
+ <div class="hd">Underneath</div>
+ <div class="row"><label for="lyBase" style="font-weight:600">Base map</label><div class="sub"><select id="lyBase" aria-label="Base map"><option value="dark">Dark grey</option><option value="light">Light grey</option><option value="imagery">Satellite imagery (daytime)</option><option value="none">None (black)</option></select></div></div>
+ <div class="row"><label><input type="checkbox" id="lyHill"> Hill shading</label><div class="sub"><span>strength</span><input type="range" id="lyHillK" min="10" max="100" step="5" aria-label="Hill shading strength"></div></div>
+ <div class="hd">On top</div>
+ <div class="row"><label><input type="checkbox" id="lyNames"> Place names</label></div>
+ <div class="row"><label><input type="checkbox" id="lyBorders"> Country borders</label><div class="sub"><span>strength</span><input type="range" id="lyBorderK" min="10" max="100" step="5" aria-label="Border strength"></div></div>
+ <button class="reset" id="lyReset">Reset layers</button>
+</div>`;
+    return d; } });
+  map.addControl(new Ctl());
+  const g = id => document.getElementById(id), btn = map.getContainer().querySelector(".lyrBtn"), pan = g("lyrPanel");
+  btn.onclick = () => { const o = pan.hidden; pan.hidden = !o; btn.setAttribute("aria-expanded", o); };
+  const sync = () => { g("lyMode").value = mode; g("lyAlpha").value = LY.alpha; g("lyCities").checked = LY.cities; g("lyBase").value = LY.base; g("lyHill").checked = LY.hill; g("lyHillK").value = LY.hillK; g("lyNames").checked = LY.names; g("lyBorders").checked = LY.borders; g("lyBorderK").value = LY.borderK; };
+  window.syncLayers = sync;
+  const on = (id, ev, f) => g(id).addEventListener(ev, e => { f(e.target); saveLY(); });
+  on("lyMode", "change", t => setMode(t.value));
+  on("lyAlpha", "input", t => { LY.alpha = +t.value; [ovL, ovR].forEach(o => o && o.setOpacity(LY.alpha / 100)); });
+  on("lyCities", "change", async t => { LY.cities = t.checked; await loadCities(); drawCities(); });
+  on("lyBase", "change", t => { LY.base = t.value; setBase(); setHill(); drawBorders(); });
+  on("lyHill", "change", t => { LY.hill = t.checked; setHill(); }); on("lyHillK", "input", t => { LY.hillK = +t.value; LY.hill = g("lyHill").checked = true; setHill(); });
+  on("lyNames", "change", t => { LY.names = t.checked; setBase(); });
+  on("lyBorders", "change", async t => { LY.borders = t.checked; await loadBorders(); drawBorders(); }); on("lyBorderK", "input", async t => { LY.borderK = +t.value; LY.borders = g("lyBorders").checked = true; await loadBorders(); drawBorders(); });
+  g("lyReset").onclick = async () => { Object.assign(LY, LYDEF); saveLY(); sync(); setBase(); setHill(); await loadBorders(); drawBorders(); drawCities(); [ovL, ovR].forEach(o => o && o.setOpacity(1)); };
+  sync();
+})();
+setBase(); setHill(); setMode("year");
+loadBorders().then(drawBorders); loadCities().then(drawCities);
+
+/* ===== charts ===== */
+function axisX(s, X, y0, years, cls = "lab s m") { years.forEach(y => lbl(s, X(y), y0, y, cls, "middle")); }
+resp(document.getElementById("worldChart"), (W0, sm) => {
+  const H0 = sm ? 250 : 300, s = el("svg", { viewBox: `0 0 ${W0} ${H0}` }, document.getElementById("worldChart"));
+  const L0 = 44, R0 = W0 - 12, T0 = 14, B0 = H0 - 28, ws = R.world.series, mx = 60;
+  const X = y => L0 + (R0 - L0) * (y - 2000) / 24, Y = v => B0 - (B0 - T0) * v / mx;
+  [0, 10, 20, 30, 40, 50, 60].forEach(v => { el("line", { x1: L0, x2: R0, y1: Y(v), y2: Y(v), stroke: css("--rule") }, s); lbl(s, L0 - 6, Y(v) + 4, v, "lab s m", "end"); });
+  axisX(s, X, H0 - 8, sm ? [2000, 2006, 2012, 2018, 2024] : [2000, 2004, 2008, 2012, 2016, 2020, 2024]);
+  el("rect", { x: X(2000), y: T0, width: X(2011.5) - X(2000), height: B0 - T0, fill: css("--panel"), opacity: .7 }, s);
+  lbl(s, X(2005.75), T0 + 16, "modelled", "lab s m", "middle");
+  lbl(s, X(2018), T0 + 16, "observed by VIIRS", "lab s m", "middle");
+  const P = (a, b) => "M" + YEARS.slice(a, b).map((y, i) => X(y) + " " + Y(ws[a + i])).join(" L");
+  el("path", { d: P(0, 12), fill: "none", stroke: GREY(), "stroke-width": 2.2, "stroke-dasharray": "5 4" }, s);
+  el("path", { d: P(12, 25), fill: "none", stroke: GOLD(), "stroke-width": 3 }, s);
+  YEARS.forEach((y, i) => { const c = el("circle", { cx: X(y), cy: Y(ws[i]), r: sm ? 3 : 4, fill: y >= 2012 ? GOLD() : css("--bg"), stroke: y >= 2012 ? GOLD() : GREY(), "stroke-width": 1.6 }, s); hover(c, `${y}${y < 2012 ? " (modelled)" : ""}<br>${f1(ws[i])} million light units`); });
+  lbl(s, L0 + 4, T0 - 2, "million light units", "lab s m");
+});
+resp(document.getElementById("regionChart"), (W0, sm) => {
+  const keys = ["na", "eca", "eap", "mena", "lac", "sa", "ssa"], rh = 34, H0 = keys.length * rh + 40, s = el("svg", { viewBox: `0 0 ${W0} ${H0}` }, document.getElementById("regionChart"));
+  const L0 = sm ? 150 : 230, R0 = W0 - 16, mx = 35, X = v => L0 + (R0 - L0) * v / mx;
+  [0, 10, 20, 30].forEach(v => { el("line", { x1: X(v), x2: X(v), y1: 6, y2: H0 - 26, stroke: css("--rule") }, s); lbl(s, X(v), H0 - 10, v + "%", "lab s m", "middle"); });
+  keys.forEach((k, i) => { const r = R.reg[k], y = 18 + i * rh;
+    lbl(s, L0 - 10, y + 4, sm ? ({ "Latin America and the Caribbean": "Latin America", "Middle East and North Africa": "M. East, N. Africa", "Europe and Central Asia": "Europe, C. Asia", "East Asia and Pacific": "East Asia, Pacific" }[r.name] || r.name) : r.name, "lab", "end");
+    el("line", { x1: X(r.pop_share), x2: X(r.pop_share), y1: y - 9, y2: y + 9, stroke: GREY(), "stroke-width": 2.4 }, s);
+    el("line", { x1: X(r.share0), x2: X(r.share1), y1: y, y2: y, stroke: r.share1 > r.share0 ? GOLD() : MAG(), "stroke-width": 2.4 }, s);
+    el("circle", { cx: X(r.share0), cy: y, r: 5.5, fill: css("--bg"), stroke: css("--fg"), "stroke-width": 1.6 }, s);
+    const c = el("circle", { cx: X(r.share1), cy: y, r: 6, fill: r.share1 > r.share0 ? GOLD() : MAG() }, s);
+    hover(c, `<b>${r.name}</b><br>Share of light ${r.share0.toFixed(1)}% → ${r.share1.toFixed(1)}%<br>Light ${chg(1 + r.pct / 100)} (three-year averages ${chg(1 + r.pct3 / 100)})<br>Share of people ${r.pop_share.toFixed(1)}%`); });
+});
+resp(document.getElementById("divChart"), (W0, sm) => {
+  const rows = R.up.slice(0, 15).concat(R.down.filter(d => Math.round(d.pct) <= -10).slice().reverse()).sort((a, b) => b.ratio - a.ratio);
+  const rh = sm ? 20 : 22, H0 = rows.length * rh + 44, s = el("svg", { viewBox: `0 0 ${W0} ${H0}` }, document.getElementById("divChart"));
+  const L0 = sm ? 112 : 160, R0 = W0 - 50, lo = -1.25, hi = 3.35, X = v => L0 + (R0 - L0) * (v - lo) / (hi - lo);
+  [[-1, "½"], [0, "same"], [1, "×2"], [2, "×4"], [3, "×8"]].forEach(([v, t]) => { el("line", { x1: X(v), x2: X(v), y1: 10, y2: H0 - 28, stroke: v === 0 ? css("--fg") : css("--rule") }, s); lbl(s, X(v), H0 - 12, t, "lab s m", "middle"); });
+  rows.forEach((r, i) => { const y = 12 + i * rh, v = Math.log2(r.ratio), up = v > 0;
+    const b = el("rect", { x: Math.min(X(0), X(v)), y, width: Math.abs(X(v) - X(0)), height: rh - 6, fill: up ? GOLD() : MAG() }, s);
+    lbl(s, up ? X(0) - 6 : X(0) + 6, y + rh / 2, r.name, "lab", up ? "end" : "start");
+    lbl(s, up ? X(v) + 5 : X(v) - 5, y + rh / 2, up ? `×${r.ratio.toFixed(1)}` : `${Math.round(r.pct)}%`, "lab s b", up ? "start" : "end");
+    hover(b, `<b>${r.name}</b><br>2012 to 2024: ${chg(r.ratio)}<br>Three-year averages: ${chg(1 + r.pct3 / 100)}<br>${r.share1.toFixed(2)}% of world light in 2024`); b.addEventListener("click", () => goCountry(r.a3)); });
+});
+(() => { const box = document.getElementById("cityMini");
+  const list = [["Kharkiv", 0], ["Aleppo", 0], ["Sanaa", 0], ["Khartoum", 0], ["Beirut", 0], ["The Hague", 0], ["Kathmandu", 1], ["Kumasi", 1], ["Addis Ababa", 1], ["Phnom Penh", 1], ["Mosul", 1], ["Baghdad", 1]];
+  list.forEach(([n, up]) => { const c = R.city[n]; const d = document.createElement("div"); d.className = "c"; d.tabIndex = 0;
+    const ser = c.series.slice(12), mx = Math.max(...ser), W0 = 160, H0 = 64, s = el("svg", { viewBox: `0 0 ${W0} ${H0}` });
+    const X = i => 4 + (W0 - 8) * i / (ser.length - 1), Y = v => H0 - 14 - (H0 - 22) * v / mx;
+    el("path", { d: "M" + ser.map((v, i) => X(i) + " " + Y(v)).join(" L") + ` L${X(ser.length - 1)} ${H0 - 14} L${X(0)} ${H0 - 14} Z`, fill: up ? GOLD() : MAG(), opacity: .18 }, s);
+    el("path", { d: "M" + ser.map((v, i) => X(i) + " " + Y(v)).join(" L"), fill: "none", stroke: up ? GOLD() : MAG(), "stroke-width": 2.2 }, s);
+    lbl(s, 4, H0 - 2, "2012", "lab s m"); lbl(s, W0 - 4, H0 - 2, "2024", "lab s m", "end");
+    const txt = up ? `×${c.ratio.toFixed(1)} since 2012` : `-${Math.round(c.dip.fall)}%, ${c.dip.peak_year} to ${c.dip.low_year}`;
+    d.innerHTML = `<h5>${esc(n)}</h5><p>${esc(c.country)} · ${txt}</p>`; d.appendChild(s);
+    d.onclick = () => goCity(n); d.onkeydown = e => { if (e.key === "Enter") goCity(n); }; box.appendChild(d); });
+})();
+resp(document.getElementById("ppChart"), (W0, sm) => {
+  const rows = R.pp.top.concat(R.pp.bottom.slice().reverse()), rh = 21, H0 = rows.length * rh + 54, s = el("svg", { viewBox: `0 0 ${W0} ${H0}` }, document.getElementById("ppChart"));
+  const L0 = sm ? 120 : 170, R0 = W0 - 50, lo = Math.log(2), hi = Math.log(1500), X = v => L0 + (R0 - L0) * (Math.log(v) - lo) / (hi - lo);
+  [3, 10, 30, 100, 300, 1000].forEach(v => { el("line", { x1: X(v), x2: X(v), y1: 6, y2: H0 - 30, stroke: v === 100 ? css("--fg") : css("--rule"), "stroke-dasharray": v === 100 ? "4 3" : "" }, s); lbl(s, X(v), H0 - 14, v, "lab s m", "middle"); });
+  lbl(s, X(100) + 4, H0 - 34, "world average", "lab s m");
+  rows.forEach((r, i) => { const y = 16 + i * rh + (i >= 10 ? 10 : 0);
+    lbl(s, L0 - 8, y + 4, r.name, "lab", "end");
+    el("line", { x1: X(2), x2: X(r.pp), y1: y, y2: y, stroke: css("--rule"), "stroke-width": 1.4 }, s);
+    const c = el("circle", { cx: X(r.pp), cy: y, r: 5.5, fill: r.pp > 100 ? GOLD() : INK() }, s);
+    lbl(s, X(r.pp) + 9, y + 4, r.pp >= 10 ? fmt(r.pp) : f1(r.pp), "lab s");
+    hover(c, `<b>${r.name}</b><br>${f1(r.pp)} (world = 100)<br>${f1(r.pop_m)} million people (Natural Earth)`); });
+});
+/* table */
+(() => { const tb = document.querySelector("#ctyTable tbody"); let key = "l1", dir = -1;
+  const rows = Object.entries(CT).filter(([a, c]) => c.s[12] > 0 || c.s[24] > 0).map(([a, c]) => ({ a, n: c.n, l0: c.s[12] / 1000, l1: c.s[24] / 1000, c: c.c, c3: c.c3, pp: c.pp }));
+  function draw() { rows.sort((a, b) => { const x = a[key], y = b[key]; if (x == null) return 1; if (y == null) return -1; return (typeof x === "string" ? x.localeCompare(y) : x - y) * dir; });
+    tb.innerHTML = rows.map(r => `<tr class="go" data-a="${r.a}"><td>${esc(r.n)}</td><td class="num">${f1(r.l0)}</td><td class="num">${f1(r.l1)}</td><td class="num">${chg(r.c)}</td><td class="num wide">${chg(r.c3)}</td><td class="num wide">${r.pp == null ? "n/a" : f1(r.pp)}</td></tr>`).join("");
+    tb.querySelectorAll("tr").forEach(tr => tr.onclick = () => goCountry(tr.dataset.a)); }
+  document.querySelectorAll("#ctyTable th").forEach(th => th.onclick = () => { const k = th.dataset.k; if (k === key) dir = -dir; else { key = k; dir = k === "n" ? 1 : -1; } draw(); });
+  draw(); })();
+
+/* theme */
+document.getElementById("theme").onclick = () => { const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; r.dataset.theme = dark ? "light" : "dark"; redraws.forEach(f => f()); legend(); showCountry(null); };
+</script>
+/*FULLSCREEN*/
+</body>
+</html>
