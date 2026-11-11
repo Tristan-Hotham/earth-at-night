@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this data or code, please cite it as below."
+title: "The Earth at Night: Where the World Lit Up and Where It Went Dark, from Satellite Night Lights 2012 to 2024"
+type: dataset
+authors:
+  - family-names: Hotham
+    given-names: Tristan
+    orcid: "https://orcid.org/0000-0003-4931-9349"
+    affiliation: "Independent researcher"
+doi: "10.5281/zenodo.23857868"
+url: "https://maps.tristanhotham.com/earth-at-night/"
+repository-code: "https://github.com/Tristan-Hotham/earth-at-night"
+license: CC-BY-4.0
+keywords:
+  - "night lights"
+  - "VIIRS"
+  - "Day/Night Band"
+  - "artificial light at night"
+  - "light pollution"
+  - "electrification"
+  - "conflict"
+  - "LED street lighting"
+  - "remote sensing"
+  - "data visualisation"
